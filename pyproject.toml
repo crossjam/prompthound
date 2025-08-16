@@ -1,0 +1,34 @@
+[project]
+name = "prompthound"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Brian Dennis", email = "bmd+github@crossjam.net" }
+]
+requires-python = ">=3.11"
+dependencies = [
+    "click==8.1.8",
+    "feedparser",
+    "htmd-py",
+    "llm",
+    "llm-lmstudio @ git+https://github.com/agustif/llm-lmstudio.git",
+    "llm-mlx",
+    "lmstudio",
+    "pydantic-ai-slim[anthropic,cli,huggingface,openai]",
+    "sentencepiece",
+    "ttok",
+]
+
+[project.scripts]
+prompthound = "prompthound:main"
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[dependency-groups]
+dev = [
+    "clai>=0.7.2",
+    "ptpython",
+]
