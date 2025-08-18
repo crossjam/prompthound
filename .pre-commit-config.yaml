@@ -1,0 +1,20 @@
+repos:
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    # Ruff version
+    rev: v0.6.3
+    hooks:
+      # Run the linter
+      - id: ruff
+        args: [ --fix ]
+      # Run the formatter
+      - id: ruff-format
+
+  - repo: https://github.com/PyCQA/isort
+    # isort version
+    rev: 5.13.2
+    hooks:
+      # Sort imports with isort
+      - id: isort
+        args: [ "--profile", "black", "--filter-files" ]
+
