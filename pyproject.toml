@@ -1,27 +1,38 @@
 [project]
 name = "prompthound"
 version = "0.1.0"
-description = "Add your description here"
+description = "An experimental framework integrating AI into memex methods"
 readme = "README.md"
 authors = [
-    { name = "Brian Dennis", email = "bmd+github@crossjam.net" }
+    { name = "Brian Dennis", email = "bmd@pirateninja.dev" }
 ]
 requires-python = ">=3.11"
 dependencies = [
     "click==8.1.8",
+    "click-default-group",
+    "click-spinner",
     "feedparser",
     "htmd-py",
     "llm",
     "llm-lmstudio @ git+https://github.com/agustif/llm-lmstudio.git",
     "llm-mlx",
     "lmstudio",
+    "loguru",
+    "pluggy",
     "pydantic-ai-slim[anthropic,cli,huggingface,openai]",
     "sentencepiece",
     "ttok",
+    "typer",
 ]
 
 [project.scripts]
-prompthound = "prompthound:main"
+prompthound = "prompthound.cli:main"
+
+[project.entry-points.console_scripts]
+hackles = "prompthound.cli:cli"
+
+[project.optional-dependencies]
+test = ["pytest"]
 
 [build-system]
 requires = ["setuptools>=61"]
