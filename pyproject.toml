@@ -24,6 +24,11 @@ dependencies = [
     "ttok",
     "typer",
     "platformdirs",
+    "sqlite-utils",
+    "httpx",
+    "feedparser",
+    "unidecode",
+    "regex",
 ]
 
 [project.scripts]

@@ -3,7 +3,7 @@ import feedparser
 import httpx
 import time
 
-from slugify import Slugify
+from ..slugify import Slugify
 from sqlite_utils import Database
 
 slugify = Slugify(to_lower=True, separator="_", max_length=100)

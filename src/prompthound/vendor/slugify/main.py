@@ -95,7 +95,8 @@ class Slugify(object):
                 convert_dict[letter_upper] = translation.capitalize()
 
         self.convert_dict = convert_dict
-        PRETRANSLATE = re.compile(r'(\\L<options>)', options=convert_dict)
+        options_pattern = '|'.join(re.escape(key) for key in convert_dict)
+        PRETRANSLATE = re.compile(r'(' + options_pattern + r')')
 
         # translate some letters before translating
         return lambda text: PRETRANSLATE.sub(lambda m: convert_dict[m.group(1)], text)
@@ -141,8 +142,9 @@ class Slugify(object):
         self.unwanted_chars_re = re.compile(unwanted_chars_re, re.IGNORECASE)
 
         if self._stop_words:
-            unwanted_chars_and_words_re = unwanted_chars_re + r'|(?<!\\p{AlNum})(?:\\L<stop_words>)(?!\\p{AlNum})'
-            self.unwanted_chars_and_words_re = re.compile(unwanted_chars_and_words_re, re.IGNORECASE, stop_words=self._stop_words)
+            stop_words_pattern = '|'.join(re.escape(word) for word in self._stop_words)
+            unwanted_chars_and_words_re = unwanted_chars_re + r'|(?<!\\p{AlNum})(?:' + stop_words_pattern + r')(?!\\p{AlNum})'
+            self.unwanted_chars_and_words_re = re.compile(unwanted_chars_and_words_re, re.IGNORECASE)
         else:
             self.unwanted_chars_and_words_re = None
 
