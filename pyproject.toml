@@ -23,6 +23,8 @@ dependencies = [
     "sentencepiece",
     "ttok",
     "typer",
+    "feed-to-sqlite @ git+https://github.com/eyeseast/feed-to-sqlite.git",
+    "platformdirs",
 ]
 
 [project.scripts]

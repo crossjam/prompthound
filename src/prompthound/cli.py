@@ -1,7 +1,11 @@
 import sys
+from pathlib import Path
 import click
+import platformdirs
+import sqlite_utils
 from rich.console import Console
 from loguru import logger
+from feed_to_sqlite.ingest import get_feeds_table
 from .logconfig import logging_config, LOGURU_LEVEL_NAMES
 
 @click.group()
@@ -45,6 +49,24 @@ def main(ctx):
 
     console.print("Hello from prompthound CLI!", style="bold green")
     logger.info("CLI command executed successfully.")
+
+
+@cli.command()
+@click.pass_context
+def init(ctx):
+    """Initialize the prompthound database."""
+    console = ctx.obj["CONSOLE"]
+    logger = ctx.obj["LOGGER"]
+
+    app_dir = Path(platformdirs.user_data_dir("dev.pirateninja.prompthound", "pirateninja.dev"))
+    app_dir.mkdir(parents=True, exist_ok=True)
+    db_path = app_dir / "prompthound.db"
+
+    console.print(f"Database path: {db_path}")
+    db = sqlite_utils.Database(db_path)
+    get_feeds_table(db)
+    console.print("Database initialized successfully.", style="bold green")
+
 
 if __name__ == "__main__":
     cli()
