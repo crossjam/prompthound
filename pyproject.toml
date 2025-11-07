@@ -26,10 +26,8 @@ dependencies = [
 ]
 
 [project.scripts]
-prompthound = "prompthound.cli:main"
+prompthound = "prompthound.cli:cli"
 
-[project.entry-points.console_scripts]
-hackles = "prompthound.cli:cli"
 
 [project.optional-dependencies]
 test = ["pytest"]
