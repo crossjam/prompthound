@@ -8,6 +8,7 @@ from loguru import logger
 from .vendor.feed_to_sqlite.ingest import get_feeds_table
 from .logconfig import logging_config, LOGURU_LEVEL_NAMES
 
+
 @click.group()
 @click.option(
     "--log-level",
@@ -31,7 +32,7 @@ def cli(ctx, log_level, log_file):
 
     # Set up logging
     logging_config(log_level=log_level.upper(), log_file=log_file)
-    logger.info(f"Log level set to {log_level}")
+    logger.debug(f"Log level set to {log_level}")
 
     # Set up console
     console = Console(file=sys.stderr)
@@ -52,14 +53,21 @@ def main(ctx):
 
 
 @cli.command()
-@click.option("--dry-run", is_flag=True, default=False, help="Show what actions would be taken without making changes.")
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    default=False,
+    help="Show what actions would be taken without making changes.",
+)
 @click.pass_context
 def init(ctx, dry_run):
     """Initialize the prompthound database."""
     console = ctx.obj["CONSOLE"]
     logger = ctx.obj["LOGGER"]
 
-    app_dir = Path(platformdirs.user_data_dir("dev.pirateninja.prompthound", "pirateninja.dev"))
+    app_dir = Path(
+        platformdirs.user_data_dir("dev.pirateninja.prompthound", "pirateninja.dev")
+    )
     db_path = app_dir / "prompthound.db"
 
     if dry_run:
