@@ -100,6 +100,6 @@ def logging_config(
     if not any(isinstance(h, InterceptHandler) for h in logging.getLogger().handlers):
         # Intercept standard library logging if it is not already intercepted
         logging.basicConfig(handlers=[InterceptHandler()], force=True)
-        logger.debug(f"logging package root handlers: {logging.getLogger().handlers}")
+        logger.info(f"logging package root handlers: {logging.getLogger().handlers}")
 
     return logger

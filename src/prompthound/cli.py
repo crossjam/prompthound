@@ -8,7 +8,6 @@ from loguru import logger
 from .vendor.feed_to_sqlite.ingest import get_feeds_table
 from .logconfig import logging_config, LOGURU_LEVEL_NAMES
 
-
 @click.group()
 @click.option(
     "--log-level",
@@ -32,7 +31,7 @@ def cli(ctx, log_level, log_file):
 
     # Set up logging
     logging_config(log_level=log_level.upper(), log_file=log_file)
-    logger.debug(f"Log level set to {log_level}")
+    logger.info(f"Log level set to {log_level}")
 
     # Set up console
     console = Console(file=sys.stderr)
@@ -53,26 +52,27 @@ def main(ctx):
 
 
 @cli.command()
-@click.option(
-    "--dry-run",
-    is_flag=True,
-    default=False,
-    help="Show what actions would be taken without making changes.",
-)
+@click.option("--dry-run", is_flag=True, default=False, help="Show what actions would be taken without making changes.")
 @click.pass_context
 def init(ctx, dry_run):
     """Initialize the prompthound database."""
     console = ctx.obj["CONSOLE"]
     logger = ctx.obj["LOGGER"]
 
-    app_dir = Path(
-        platformdirs.user_data_dir("dev.pirateninja.prompthound", "pirateninja.dev")
-    )
+    app_dir = Path(platformdirs.user_data_dir("dev.pirateninja.prompthound", "pirateninja.dev"))
     db_path = app_dir / "prompthound.db"
 
     if dry_run:
-        console.print("DRY RUN: Would create the following database:")
-        console.print(f"Database path: {db_path}")
+        console.print("[bold cyan]-- Dry Run Mode --[/bold cyan]")
+        if app_dir.exists():
+            console.print(f":white_check_mark: [green]Directory exists:[/] {app_dir}")
+        else:
+            console.print(f":deciduous_tree: [yellow]Directory would be created:[/] {app_dir}")
+
+        if db_path.exists():
+            console.print(f":white_check_mark: [green]Database exists:[/] {db_path}")
+        else:
+            console.print(f":floppy_disk: [yellow]Database would be created:[/] {db_path}")
         return
 
     app_dir.mkdir(parents=True, exist_ok=True)

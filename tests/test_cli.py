@@ -36,6 +36,25 @@ def test_cli_init(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
 def test_cli_init_dry_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     """Test the init CLI command with --dry-run."""
 
+    non_existent_dir = tmp_path / "non_existent"
+    def mock_user_data_dir(*args, **kwargs):
+        return str(non_existent_dir)
+
+    monkeypatch.setattr("platformdirs.user_data_dir", mock_user_data_dir)
+
+    runner = CliRunner()
+    result = runner.invoke(cli, ['init', '--dry-run'])
+    assert result.exit_code == 0
+    db_path = tmp_path / "prompthound.db"
+    assert not db_path.exists()
+    assert "Dry Run Mode" in result.output
+    assert "Directory would be created" in result.output
+    assert "Database would be created" in result.output
+
+
+def test_cli_init_dry_run_dir_exists(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """Test the init CLI command with --dry-run when the directory already exists."""
+
     def mock_user_data_dir(*args, **kwargs):
         return str(tmp_path)
 
@@ -46,4 +65,5 @@ def test_cli_init_dry_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     assert result.exit_code == 0
     db_path = tmp_path / "prompthound.db"
     assert not db_path.exists()
-    assert "DRY RUN" in result.output
+    assert "Directory exists" in result.output
+    assert "Database would be created" in result.output

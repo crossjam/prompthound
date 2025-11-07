@@ -46,5 +46,4 @@ build-backend = "setuptools.build_meta"
 dev = [
     "clai>=0.7.2",
     "ptpython",
-    "pytest>=8.4.1",
 ]
