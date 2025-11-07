@@ -23,6 +23,7 @@ dependencies = [
     "sentencepiece",
     "ttok",
     "typer",
+    "platformdirs",
 ]
 
 [project.scripts]
