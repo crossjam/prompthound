@@ -29,7 +29,11 @@ dependencies = [
     "feedparser",
     "unidecode",
     "regex",
+    "loguru-config",
 ]
+
+[project.urls]
+Repository = "https://github.com/crossjam/prompthound"
 
 [project.scripts]
 prompthound = "prompthound.cli:cli"
@@ -45,6 +49,60 @@ build-backend = "setuptools.build_meta"
 [dependency-groups]
 dev = [
     "clai>=0.7.2",
+    "poethepoet>=0.37.0",
     "ptpython",
     "pytest>=8.4.1",
+    "ruff>=0.14.5",
+    "ty>=0.0.1a27",
+    "types-python-dateutil>=2.8.0",    
 ]
+
+[tool.uv.sources]
+loguru-config = { git = "https://github.com/crossjam/loguru-config" }
+
+[tool.ty]
+# Ty configuration - lenient settings for existing codebase
+# Enable stricter checks gradually as type annotations are added
+
+[tool.ty.rules]
+# Ignore certain rules for now to allow gradual type annotation adoption
+unresolved-import = "ignore"           # Allow unresolved imports (e.g., pkg_resources)
+possibly-missing-attribute = "ignore"  # Allow potentially missing attributes
+unsupported-operator = "ignore"        # Allow operators on Unknown types
+invalid-parameter-default = "ignore"   # Allow None defaults for typed parameters
+invalid-argument-type = "ignore"       # Allow arguments with Unknown types
+unresolved-attribute = "ignore"        # Allow attributes on Unknown types
+
+[tool.poe.tasks]
+# Linting
+[tool.poe.tasks.lint]
+help = "Run ruff linter on source and test files"
+cmd = "ruff check src/ tests/"
+
+[tool.poe.tasks."lint:fix"]
+help = "Run ruff linter and auto-fix issues"
+cmd = "ruff check --fix src/ tests/"
+
+# Type checking
+[tool.poe.tasks.type]
+help = "Run ty type checker on source files"
+cmd = "ty check src/"
+
+# Testing
+[tool.poe.tasks.test]
+help = "Run pytest with verbose output"
+cmd = "pytest -v"
+
+[tool.poe.tasks."test:cov"]
+help = "Run pytest with coverage report (terminal + HTML)"
+cmd = "pytest --cov=scrobbledb --cov-report=term-missing --cov-report=html"
+
+[tool.poe.tasks."test:quick"]
+help = "Run pytest and stop on first failure"
+cmd = "pytest -x"
+
+# Combined QA - run all checks
+[tool.poe.tasks.qa]
+help = "Run all QA checks (lint, type, test)"
+sequence = ["lint", "type", "test"]
+ignore_fail = false
