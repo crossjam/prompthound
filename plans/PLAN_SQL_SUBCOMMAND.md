@@ -39,6 +39,10 @@ Create a new `sql` command group that wraps sqlite-utils commands with:
 - Users can optionally specify different database paths
 - Each command remains independently testable
 
+Be aware that sometimes there are conflicts from the host CLI to
+options passed through to the wrapped CLI. You may have to explicitly
+assign all keyword args to be safe.
+
 ### Option B: Direct Command Import
 
 Import sqlite-utils click commands directly and register them as subcommands.
