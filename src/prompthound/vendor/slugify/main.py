@@ -27,11 +27,11 @@ def join_words(words, separator, max_length=None):
     if not max_length:
         return separator.join(words)
 
-    words = iter(words)   # List to Generator
+    words = iter(words)  # List to Generator
     try:
         text = next(words)
     except StopIteration:
-        return u''
+        return ""
 
     for word in words:
         if len(text + separator + word) <= max_length:
@@ -39,9 +39,9 @@ def join_words(words, separator, max_length=None):
 
     return text[:max_length]
 
+
 # uppercase letters to translate to uppercase letters, NOT camelcase
-UPPER_TO_UPPER_LETTERS_RE = \
-    r'''
+UPPER_TO_UPPER_LETTERS_RE = r"""
     (
             \\p{Uppercase_Letter} {2,}                          # 2 or more adjacent letters - UP always
         |
@@ -62,18 +62,29 @@ UPPER_TO_UPPER_LETTERS_RE = \
                     […\\p{Term}--,،﹐，]\\p{Uppercase_Letter}      # and not dot (.?…!:;) with uppercase letter
             )
     )
-    '''
+    """
 
 
 class Slugify(object):
 
-    upper_to_upper_letters_re = re.compile(UPPER_TO_UPPER_LETTERS_RE, re.VERBOSE | re.VERSION1)
-    _safe_chars = ''
+    upper_to_upper_letters_re = re.compile(
+        UPPER_TO_UPPER_LETTERS_RE, re.VERBOSE | re.VERSION1
+    )
+    _safe_chars = ""
     _stop_words = ()
 
-    def __init__(self, pretranslate=None, translate=unidecode, safe_chars='', stop_words=(),
-                 to_lower=False, max_length=None, separator=u'-', capitalize=False,
-                 fold_abbrs=False):
+    def __init__(
+        self,
+        pretranslate=None,
+        translate=unidecode,
+        safe_chars="",
+        stop_words=(),
+        to_lower=False,
+        max_length=None,
+        separator="-",
+        capitalize=False,
+        fold_abbrs=False,
+    ):
 
         self.pretranslate = pretranslate
         self.translate = translate
@@ -95,8 +106,8 @@ class Slugify(object):
                 convert_dict[letter_upper] = translation.capitalize()
 
         self.convert_dict = convert_dict
-        options_pattern = '|'.join(re.escape(key) for key in convert_dict)
-        PRETRANSLATE = re.compile(r'(' + options_pattern + r')')
+        options_pattern = "|".join(re.escape(key) for key in convert_dict)
+        PRETRANSLATE = re.compile(r"(" + options_pattern + r")")
 
         # translate some letters before translating
         return lambda text: PRETRANSLATE.sub(lambda m: convert_dict[m.group(1)], text)
@@ -109,7 +120,9 @@ class Slugify(object):
             pretranslate = lambda text: text
 
         elif not callable(pretranslate):
-            error_message = u"Keyword argument 'pretranslate' must be dict, None or callable. Not {0.__class__.__name__}".format(pretranslate)
+            error_message = "Keyword argument 'pretranslate' must be dict, None or callable. Not {0.__class__.__name__}".format(
+                pretranslate
+            )
             raise ValueError(error_message)
 
         self._pretranslate = pretranslate
@@ -138,22 +151,33 @@ class Slugify(object):
     stop_words = property(fset=set_stop_words)
 
     def calc_unwanted_chars_re(self):
-        unwanted_chars_re = r'[^\\p{{AlNum}}{safe_chars}]+'.format(safe_chars=re.escape(self._safe_chars or ''))
+        unwanted_chars_re = r"[^\\p{{AlNum}}{safe_chars}]+".format(
+            safe_chars=re.escape(self._safe_chars or "")
+        )
         self.unwanted_chars_re = re.compile(unwanted_chars_re, re.IGNORECASE)
 
         if self._stop_words:
-            stop_words_pattern = '|'.join(re.escape(word) for word in self._stop_words)
-            unwanted_chars_and_words_re = unwanted_chars_re + r'|(?<!\\p{AlNum})(?:' + stop_words_pattern + r')(?!\\p{AlNum})'
-            self.unwanted_chars_and_words_re = re.compile(unwanted_chars_and_words_re, re.IGNORECASE)
+            stop_words_pattern = "|".join(re.escape(word) for word in self._stop_words)
+            unwanted_chars_and_words_re = (
+                unwanted_chars_re
+                + r"|(?<!\\p{AlNum})(?:"
+                + stop_words_pattern
+                + r")(?!\\p{AlNum})"
+            )
+            self.unwanted_chars_and_words_re = re.compile(
+                unwanted_chars_and_words_re, re.IGNORECASE
+            )
         else:
             self.unwanted_chars_and_words_re = None
 
     def sanitize(self, text):
         if self.apostrophe_is_not_safe:
-            text = text.replace("'", '').strip()  # remove '
+            text = text.replace("'", "").strip()  # remove '
 
         if self.unwanted_chars_and_words_re:
-            words = [word for word in self.unwanted_chars_and_words_re.split(text) if word]
+            words = [
+                word for word in self.unwanted_chars_and_words_re.split(text) if word
+            ]
             if words:
                 return words
 
@@ -162,16 +186,20 @@ class Slugify(object):
 
     def __call__(self, text, **kwargs):
 
-        max_length = kwargs.get('max_length', self.max_length)
-        separator = kwargs.get('separator', self.separator)
+        max_length = kwargs.get("max_length", self.max_length)
+        separator = kwargs.get("separator", self.separator)
 
         if not isinstance(text, str_type):
-            text = text.decode('utf8', 'ignore')
+            text = text.decode("utf8", "ignore")
 
-        if kwargs.get('fold_abbrs', self.fold_abbrs):
-            text = re.sub(r'(?<![\p{Letter}.])((?:\p{Letter}\.){2,})', lambda x: x.group(0).replace('.', ''), text)
+        if kwargs.get("fold_abbrs", self.fold_abbrs):
+            text = re.sub(
+                r"(?<![\p{Letter}.])((?:\p{Letter}\.){2,})",
+                lambda x: x.group(0).replace(".", ""),
+                text,
+            )
 
-        if kwargs.get('to_lower', self.to_lower):
+        if kwargs.get("to_lower", self.to_lower):
             text = self._pretranslate(text)
             text = self._translate(text)
             text = text.lower()
@@ -186,12 +214,12 @@ class Slugify(object):
 
                 text_parts[position] = text_part
 
-            text = u''.join(text_parts)
+            text = "".join(text_parts)
 
         words = self.sanitize(text)
         text = join_words(words, separator, max_length)
 
-        if text and kwargs.get('capitalize', self.capitalize):
+        if text and kwargs.get("capitalize", self.capitalize):
             text = text[0].upper() + text[1:]
 
         return text
@@ -204,12 +232,11 @@ class UniqueSlugify(Slugify):
 
     def __init__(self, *args, **kwargs):
         # don't declare uids in args to avoid problem if someone uses positional arguments on initialization
-        self.uids = kwargs.pop('uids', set())
+        self.uids = kwargs.pop("uids", set())
         if isinstance(self.uids, list):
             self.uids = set(self.uids)
         self.unique_check = kwargs.pop(
-            "unique_check",
-            lambda text, uids: self.default_unique_check(text, uids)
+            "unique_check", lambda text, uids: self.default_unique_check(text, uids)
         )
         super(UniqueSlugify, self).__init__(*args, **kwargs)
 
@@ -218,7 +245,7 @@ class UniqueSlugify(Slugify):
         text = super(UniqueSlugify, self).__call__(text, **kwargs)
         count = 0
         newtext = text
-        separator = kwargs.get('separator', self.separator)
+        separator = kwargs.get("separator", self.separator)
         while not self.unique_check(newtext, self.uids):
             count += 1
             newtext = "%s%s%d" % (text, separator, count)
@@ -227,6 +254,7 @@ class UniqueSlugify(Slugify):
 
     def default_unique_check(self, text, uids):
         return text not in uids
+
 
 # \p{SB=AT} = '.․﹒．'
 # \p{SB=ST} = '!?՜՞։؟۔܀܁܂߹।॥၊။።፧፨᙮᜵᜶‼‽⁇⁈⁉⸮。꓿꘎꘏꤯﹖﹗！？｡'

@@ -8,7 +8,7 @@ import sqlite_utils
 def test_cli_main():
     """Test the main CLI command."""
     runner = CliRunner()
-    result = runner.invoke(cli, ['main'])
+    result = runner.invoke(cli, ["main"])
     assert result.exit_code == 0
     assert "Hello from prompthound CLI!" in result.output
 
@@ -22,7 +22,7 @@ def test_cli_init(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr("platformdirs.user_data_dir", mock_user_data_dir)
 
     runner = CliRunner()
-    result = runner.invoke(cli, ['init'])
+    result = runner.invoke(cli, ["init"])
     assert result.exit_code == 0
     db_path = tmp_path / "prompthound.db"
     assert db_path.exists()
@@ -37,13 +37,14 @@ def test_cli_init_dry_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     """Test the init CLI command with --dry-run."""
 
     non_existent_dir = tmp_path / "non_existent"
+
     def mock_user_data_dir(*args, **kwargs):
         return str(non_existent_dir)
 
     monkeypatch.setattr("platformdirs.user_data_dir", mock_user_data_dir)
 
     runner = CliRunner()
-    result = runner.invoke(cli, ['init', '--dry-run'])
+    result = runner.invoke(cli, ["init", "--dry-run"])
     assert result.exit_code == 0
     db_path = tmp_path / "prompthound.db"
     assert not db_path.exists()
@@ -61,9 +62,10 @@ def test_cli_init_dry_run_dir_exists(tmp_path: Path, monkeypatch: pytest.MonkeyP
     monkeypatch.setattr("platformdirs.user_data_dir", mock_user_data_dir)
 
     runner = CliRunner()
-    result = runner.invoke(cli, ['init', '--dry-run'])
+    result = runner.invoke(cli, ["init", "--dry-run"])
     assert result.exit_code == 0
     db_path = tmp_path / "prompthound.db"
     assert not db_path.exists()
+
     assert "Directory exists" in result.output
     assert "Database would be created" in result.output

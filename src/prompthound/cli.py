@@ -64,7 +64,6 @@ def init(ctx, dry_run):
     """Initialize the prompthound database."""
     console = ctx.obj["CONSOLE"]
     logger = ctx.obj["LOGGER"]
-
     app_dir = Path(
         platformdirs.user_data_dir("dev.pirateninja.prompthound", "pirateninja.dev")
     )
