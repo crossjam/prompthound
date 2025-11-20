@@ -23,6 +23,12 @@ dependencies = [
     "sentencepiece",
     "ttok",
     "typer",
+    "platformdirs",
+    "sqlite-utils",
+    "httpx",
+    "feedparser",
+    "unidecode",
+    "regex",
 ]
 
 [project.scripts]
