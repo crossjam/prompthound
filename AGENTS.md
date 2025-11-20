@@ -1,6 +1,6 @@
 # AGENTS.md
 
-> A concise brief for AI coding agents working on this repository.  
+> A concise brief for AI coding agents working on this repository.
 > This project is a **Python package** managed with **uv** and tested with **pytest**.
 
 ---
