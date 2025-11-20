@@ -5,7 +5,9 @@ import platformdirs
 import sqlite_utils
 from rich.console import Console
 from loguru import logger
-from .vendor.feed_to_sqlite.ingest import get_feeds_table
+from .vendor.feed_to_sqlite.ingest import get_feeds_table, ingest_feed
+
+
 from .logconfig import logging_config, LOGURU_LEVEL_NAMES
 
 
@@ -59,15 +61,33 @@ def main(ctx):
     default=False,
     help="Show what actions would be taken without making changes.",
 )
+@click.option(
+    "--db",
+    "db_path",
+    type=click.Path(dir_okay=False, writable=True, resolve_path=True),
+    default=None,
+    help="Path to the SQLite database file.",
+)
 @click.pass_context
-def init(ctx, dry_run):
+def init(ctx, dry_run, db_path):
     """Initialize the prompthound database."""
     console = ctx.obj["CONSOLE"]
     logger = ctx.obj["LOGGER"]
-    app_dir = Path(
-        platformdirs.user_data_dir("dev.pirateninja.prompthound", "pirateninja.dev")
-    )
-    db_path = app_dir / "prompthound.db"
+
+    if not db_path:
+        app_dir = Path(
+            platformdirs.user_data_dir("dev.pirateninja.prompthound", "pirateninja.dev")
+        )
+        db_path = app_dir / "prompthound.db"
+    else:
+        db_path = Path(db_path)
+
+    app_dir = db_path.parent
+
+    if not dry_run and db_path.exists():
+        if not click.confirm(f"Database already exists at {db_path}. Overwrite?"):
+            console.print("Initialization cancelled.", style="bold red")
+            return
 
     if dry_run:
         console.print("[bold cyan]-- Dry Run Mode --[/bold cyan]")
@@ -91,6 +111,56 @@ def init(ctx, dry_run):
     db = sqlite_utils.Database(db_path)
     get_feeds_table(db)
     console.print("Database initialized successfully.", style="bold green")
+
+
+@cli.command()
+@click.option(
+    "--db",
+    "db_path",
+    type=click.Path(dir_okay=False, writable=True, resolve_path=True),
+    default=None,
+    help="Path to the SQLite database file.",
+)
+@click.argument("files", nargs=-1, type=click.File("r"))
+@click.pass_context
+def ingest(ctx, db_path, files):
+    """Ingest feed data from files or stdin."""
+    console = ctx.obj["CONSOLE"]
+    logger = ctx.obj["LOGGER"]
+
+    db_path = Path(db_path) if db_path else None
+
+    if not db_path:
+        app_dir = Path(
+            platformdirs.user_data_dir("dev.pirateninja.prompthound", "pirateninja.dev")
+        )
+        db_path = app_dir / "prompthound.db"
+
+    if not db_path.exists():
+        console.print(f"Database not found at {db_path}. Initializing...", style="bold yellow")
+        ctx.invoke(init)
+
+    db = sqlite_utils.Database(db_path)
+
+    if not files:
+        files = [click.get_text_stream("stdin")]
+
+    for file in files:
+        try:
+            console.print(f"Ingesting from {file.name}...", style="bold cyan")
+            content = file.read()
+
+            # ingest_feed automatically handles gzipped content if it detects it.
+            ingest_feed(db, feed_content=content)
+
+        except Exception as e:
+            logger.error(f"An unexpected error occurred while processing {file.name}: {e}")
+            console.print(
+                f"An unexpected error occurred while processing {file.name}.",
+                style="bold red",
+            )
+
+    console.print("Ingestion complete.", style="bold green")
 
 
 if __name__ == "__main__":
