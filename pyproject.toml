@@ -29,7 +29,11 @@ dependencies = [
     "feedparser",
     "unidecode",
     "regex",
+    "loguru-config",
 ]
+
+[project.urls]
+Repository = "https://github.com/crossjam/prompthound"
 
 [project.scripts]
 prompthound = "prompthound.cli:cli"
@@ -45,6 +49,13 @@ build-backend = "setuptools.build_meta"
 [dependency-groups]
 dev = [
     "clai>=0.7.2",
+    "poethepoet>=0.37.0",
     "ptpython",
     "pytest>=8.4.1",
+    "ruff>=0.14.5",
+    "ty>=0.0.1a27",
+    "types-python-dateutil>=2.8.0",    
 ]
+
+[tool.uv.sources]
+loguru-config = { git = "https://github.com/crossjam/loguru-config" }
