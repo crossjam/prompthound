@@ -24,7 +24,7 @@ from .models import (
 from .parsing import canonical_json
 from .storage import Store
 
-EXTRACTOR_VERSION = "html-v1;" + ";".join(
+EXTRACTOR_VERSION = "html-v2;" + ";".join(
     f"{name}={version(name)}" for name in ("beautifulsoup4", "lxml", "htmd-py")
 )
 HEADINGS = {"h1", "h2", "h3", "h4", "h5", "h6"}
@@ -158,6 +158,16 @@ def sections(soup, headings: dict[int, Heading], base: str) -> list[Section]:
         )
 
     def walk(node):
+        def has_nested_boundary():
+            return (
+                node.find(
+                    lambda descendant: descendant.name in HEADINGS
+                    or (attribute(descendant, "id") or attribute(descendant, "name"))
+                    in targets
+                )
+                is not None
+            )
+
         if isinstance(node, Tag) and node.name in HEADINGS:
             heading = headings[id(node)]
             if current.anchor is None or current.anchor != heading.anchor:
@@ -168,18 +178,20 @@ def sections(soup, headings: dict[int, Heading], base: str) -> list[Section]:
             current.parts.append(str(node))
         elif (
             isinstance(node, Tag)
-            and (attribute(node, "name") or attribute(node, "id")) in targets
+            and (attribute(node, "id") or attribute(node, "name")) in targets
         ):
-            anchor = attribute(node, "name") or attribute(node, "id")
+            anchor = attribute(node, "id") or attribute(node, "name")
             if anchor != current.anchor:
                 flush()
                 current.title = toc.get(anchor, anchor or "Section")
                 current.anchor = anchor
                 current.parts = []
-            current.parts.append(str(node))
-        elif isinstance(node, Tag) and (
-            node.find(list(HEADINGS)) or node.select("a[name], a[id]")
-        ):
+            if has_nested_boundary():
+                for child in node.children:
+                    walk(child)
+            else:
+                current.parts.append(str(node))
+        elif isinstance(node, Tag) and has_nested_boundary():
             for child in node.children:
                 walk(child)
         else:
@@ -253,6 +265,11 @@ def extract_block(
         anchor = attribute(node, "id") or (
             urlsplit(permalink).fragment if permalink else None
         )
+        if not anchor:
+            # A wrapper ID labels its first heading, not every later subheading.
+            wrapper = node.find_parent(id=True)
+            if wrapper is not None and wrapper.find(list(HEADINGS)) is node:
+                anchor = attribute(wrapper, "id")
         if not anchor and previous_anchor is not None and previous_anchor.name == "a":
             anchor = attribute(previous_anchor, "name")
         heading = Heading(

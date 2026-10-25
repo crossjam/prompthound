@@ -49,7 +49,7 @@ stderr contained plain summaries without ANSI controls.
 
 ## Automated checks
 
-The full project suite passed **104 tests**, with **one pre-existing skipped
+The full project suite passed **105 tests**, with **one pre-existing skipped
 tar.gz archive test**. Portable tests exercise production file/stdin ingestion,
 gzip artifacts, capture conflicts, changes/reversions, duplicate IDs, metadata
 changes, late captures, concurrent writers, lock retries, atomic rollback,

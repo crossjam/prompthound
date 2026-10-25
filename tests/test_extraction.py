@@ -78,6 +78,35 @@ def test_malformed_html_and_missing_alt_are_supported():
     assert result.features.images[0].alt is None
 
 
+def test_toc_wrappers_visit_nested_headings_and_anchors_without_duplicate_body():
+    result = extract_block(
+        ContentBlock(
+            type="text/html",
+            value='<nav><a href="#essay">TOC label</a><a href="#nested">Nested</a></nav>'
+            '<section id="essay"><h2>Actual essay title</h2><p>First body</p>'
+            "<h3>Subheading</h3><p>Second body</p>"
+            '<div><div id="nested"><p>Nested body</p></div></div></section>'
+            "<h2>Following section</h2><p>Final body</p>",
+        )
+    )
+    sections = result.features.sections
+    essay = next(section for section in sections if section.anchor == "essay")
+    assert essay.title == "Actual essay title"
+    assert "First body" in essay.text and "Second body" not in essay.text
+    subheading = next(section for section in sections if section.title == "Subheading")
+    assert subheading.anchor is None
+    assert "Second body" in subheading.text and "Nested body" not in subheading.text
+    assert (
+        next(section for section in sections if section.anchor == "nested").title
+        == "Nested"
+    )
+    assert sections[-1].title == "Following section" and sections[-1].anchor is None
+    assert result.features.headings[0].anchor == "essay"
+    combined = "\n".join(section.text for section in sections)
+    for text in ("First body", "Second body", "Nested body", "Final body"):
+        assert combined.count(text) == 1
+
+
 def test_later_headings_do_not_inherit_a_stale_named_anchor():
     result = extract_block(
         ContentBlock(

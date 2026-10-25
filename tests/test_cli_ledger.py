@@ -199,6 +199,7 @@ def test_interrupt_rolls_back_current_snapshot_and_reports_committed_counts(
     result = invoke(db, first, second)
     assert result.exit_code == 1, result.output
     assert "Ingestion interrupted." in result.stderr
+    assert "2 inputs" in result.stderr
     assert "1 revisions" in result.stderr
     assert "Ingestion complete." not in result.stderr
     with Store(db) as store:

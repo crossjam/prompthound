@@ -66,7 +66,7 @@ persist, extract, and migrate. Totals can remain unknown while reading/parsing,
 then become item/block/row counts. Progress is provisional until persistence
 commits. Only a persist/committed event can carry `Counts`; rollback and replay
 events never add rows to `Results`. Input terminal outcomes advance file counts,
-including failures and replays. Extraction successes/failures and interruptions
+including failures, replays and interrupted inputs. Extraction successes/failures and interruptions
 remain distinct from already committed source records. Rich consumes this contract
 at the CLI boundary; persistence services do not import terminal renderers.
 

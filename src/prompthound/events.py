@@ -85,6 +85,7 @@ class Results:
             "completed",
             "failed",
             "replayed",
+            "interrupted",
         }:
             self.files += 1
             self.failed_files += event.outcome == "failed"

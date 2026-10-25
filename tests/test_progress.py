@@ -72,6 +72,8 @@ def test_interrupt_always_stops_the_live_display():
     with pytest.raises(KeyboardInterrupt):
         with renderer:
             renderer(Event("migrate", "started"))
+            renderer(Event("input", "interrupted", source="current.rss"))
+            assert renderer.display.tasks[renderer.files_task].completed == 1
             raise KeyboardInterrupt
     assert renderer.results.interrupted
     assert not renderer.display.live.is_started

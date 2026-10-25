@@ -62,6 +62,8 @@ def test_extraction_failure_and_interruption_preserve_commit_counts():
     assert results.revisions == 1
     assert results.extracted == results.failed_extractions == 1
     assert results.interrupted
+    assert results.files == 1
+    assert results.failed_files == results.replayed_files == 0
 
 
 @pytest.mark.parametrize("kwargs", [{"completed": -1}, {"completed": 2, "total": 1}])

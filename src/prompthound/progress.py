@@ -71,6 +71,7 @@ class CLIProgress:
             "completed",
             "failed",
             "replayed",
+            "interrupted",
         }:
             self.display.update(
                 self.files_task,
