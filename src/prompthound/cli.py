@@ -138,13 +138,14 @@ def ingest(ctx, db_path, files):
 
     if not db_path.exists():
         console.print(f"Database not found at {db_path}. Initializing...", style="bold yellow")
-        ctx.invoke(init)
+        ctx.invoke(init, db_path=str(db_path))
 
     db = sqlite_utils.Database(db_path)
 
     if not files:
         files = [click.get_text_stream("stdin")]
 
+    failed_inputs = 0
     for file in files:
         try:
             console.print(f"Ingesting from {file.name}...", style="bold cyan")
@@ -154,11 +155,17 @@ def ingest(ctx, db_path, files):
             ingest_feed(db, feed_content=content)
 
         except Exception as e:
+            failed_inputs += 1
             logger.error(f"An unexpected error occurred while processing {file.name}: {e}")
             console.print(
                 f"An unexpected error occurred while processing {file.name}.",
                 style="bold red",
             )
+
+    if failed_inputs:
+        raise click.ClickException(
+            f"Ingestion failed for {failed_inputs} of {len(files)} inputs."
+        )
 
     console.print("Ingestion complete.", style="bold green")
 
