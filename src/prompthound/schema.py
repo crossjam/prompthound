@@ -8,7 +8,7 @@ from typing import cast
 import sqlite_utils
 
 APPLICATION_ID = 0x50484E44
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 
 class SchemaError(ValueError):
@@ -127,6 +127,47 @@ IMMUTABLE_TABLES = (
     "content_extractions",
 )
 
+VIEWS = (
+    """CREATE VIEW entry_history AS
+        SELECT r.id AS revision_id,r.entry_id,r.feed_id,
+            f.publisher_id AS feed_identifier,e.publisher_id AS item_identifier,
+            r.revision_number,r.previous_revision_id,r.source_snapshot_id,
+            r.fingerprint,r.fingerprint_policy,r.feedparser_version,
+            r.payload_json,r.entry_json,r.title,r.url,r.published_at,r.updated_at,
+            r.comments_url,r.comments_feed_url,r.comment_count,r.wordpress_post_id,
+            r.id_is_permalink,r.recorded_at,s.captured_at,s.source_uri,s.source_sha256,s.format,
+            (SELECT MAX(o.snapshot_id) FROM snapshot_entries o WHERE o.revision_id=r.id)
+                AS last_observed_snapshot_id
+        FROM entry_revisions r JOIN entries e ON e.id=r.entry_id
+        JOIN feeds f ON f.id=r.feed_id JOIN snapshots s ON s.id=r.source_snapshot_id""",
+    """CREATE VIEW latest_entries AS
+        SELECT h.*,s.captured_at AS last_observed_captured_at,
+            s.recorded_at AS last_observed_recorded_at
+        FROM entry_history h LEFT JOIN snapshots s ON s.id=h.last_observed_snapshot_id
+        WHERE NOT EXISTS (SELECT 1 FROM entry_revisions newer
+            WHERE newer.entry_id=h.entry_id AND newer.revision_number>h.revision_number)""",
+    """CREATE INDEX extractions_success_latest ON content_extractions(block_id,id DESC)
+        WHERE status='completed'""",
+    """CREATE VIEW latest_entry_content AS
+        SELECT e.*,b.id AS block_id,b.role,b.position,b.type,b.language,b.base,b.value,
+            x.id AS extraction_id,x.extractor_version,x.config_json AS extraction_config_json,
+            x.recorded_at AS extracted_at,x.text,x.markdown,x.features_json
+        FROM latest_entries e LEFT JOIN content_blocks b ON b.revision_id=e.revision_id
+        LEFT JOIN content_extractions x ON x.id=(SELECT MAX(candidate.id)
+            FROM content_extractions candidate
+            WHERE candidate.block_id=b.id AND candidate.status='completed')""",
+)
+
+
+def upgrade_schema(conn: sqlite3.Connection, current: int) -> None:
+    if current == 1:
+        for statement in VIEWS:
+            conn.execute(statement)
+        conn.execute(
+            "INSERT INTO schema_migrations VALUES (2, ?)",
+            (datetime.now(timezone.utc).isoformat(),),
+        )
+
 
 def create_schema(conn: sqlite3.Connection) -> None:
     """Apply inside the caller's transaction; never use executescript's implicit commit."""
@@ -147,9 +188,10 @@ def create_schema(conn: sqlite3.Connection) -> None:
                 BEGIN SELECT RAISE(ABORT, 'append-only history cannot be modified'); END""")
     conn.execute(
         "INSERT INTO schema_migrations VALUES (?, ?)",
-        (SCHEMA_VERSION, datetime.now(timezone.utc).isoformat()),
+        (1, datetime.now(timezone.utc).isoformat()),
     )
     conn.execute(f"PRAGMA application_id = {APPLICATION_ID}")
+    upgrade_schema(conn, 1)
 
 
 def initialized(conn: sqlite3.Connection) -> bool:
@@ -166,8 +208,9 @@ def initialize(conn: sqlite3.Connection) -> None:
             version = conn.execute(
                 "SELECT MAX(version) FROM schema_migrations"
             ).fetchone()[0]
-            if version != SCHEMA_VERSION:
+            if version not in (1, SCHEMA_VERSION):
                 raise SchemaError(f"Unsupported database schema version: {version}")
+            upgrade_schema(conn, version)
         elif table_names(conn):
             raise SchemaError("Existing database requires explicit legacy migration")
         else:

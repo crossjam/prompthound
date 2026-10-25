@@ -86,3 +86,19 @@ adapter. It publishes committed counters only after commit. A failure or interru
 rolls back all changes for the snapshot. Busy/locked writes retry at most three
 times; capture replay and revision comparison are repeated inside each transaction.
 Content extraction runs separately from these source writes.
+
+## Query views and extraction selection
+
+Schema version 2 adds `entry_history` (one row per revision), `latest_entries`
+(one row per item), and `latest_entry_content` (one row per current source block,
+or a null-block row for an item without content). Each exposes internal keys and
+verbatim publisher identifiers. Latest is ledger sequence, not publication or
+capture time. Revision provenance identifies the first observation of that state;
+latest-entry rows also expose the most recent observation of that revision.
+
+The content view selects the highest extraction ID with completed status per
+block. This is the latest successfully appended extraction, independent of
+version-string sorting; failed attempts never hide the previous usable result.
+The selected version/configuration is returned alongside its text and Markdown.
+Query `content_extractions` directly to choose a specific historical version or
+configuration. Re-extraction appends attempts and never modifies source revisions.

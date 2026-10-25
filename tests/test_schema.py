@@ -78,7 +78,12 @@ def seed_revision(
 
 def test_initialization_is_versioned_repeatable_and_enforces_foreign_keys(conn):
     initialize(conn)
-    assert conn.execute("SELECT COUNT(*) FROM schema_migrations").fetchone()[0] == 1
+    assert [
+        row[0]
+        for row in conn.execute(
+            "SELECT version FROM schema_migrations ORDER BY version"
+        )
+    ] == [1, 2]
     assert conn.execute("PRAGMA foreign_keys").fetchone()[0] == 1
     with pytest.raises(sqlite3.IntegrityError):
         conn.execute("INSERT INTO entries(feed_id,publisher_id) VALUES (999,'orphan')")
@@ -192,4 +197,4 @@ def test_newer_schema_version_is_rejected_without_reinitialization(conn):
     conn.execute("INSERT INTO schema_migrations VALUES (999,'future')")
     with pytest.raises(SchemaError, match="999"):
         initialize(conn)
-    assert conn.execute("SELECT COUNT(*) FROM schema_migrations").fetchone()[0] == 2
+    assert conn.execute("SELECT COUNT(*) FROM schema_migrations").fetchone()[0] == 3
