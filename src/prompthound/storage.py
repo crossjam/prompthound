@@ -10,7 +10,7 @@ import time
 from .events import Counts, ProgressCallback, emit
 from .models import Entry, Snapshot
 from .parsing import FINGERPRINT_POLICY, canonical_json, fingerprint
-from .schema import connect, initialize
+from .schema import connect, initialize, initialized
 
 
 def utc_text(value: datetime | None) -> str | None:
@@ -29,7 +29,13 @@ class CaptureConflict(ValueError):
 
 
 class Store:
-    def __init__(self, path: str | Path):
+    def __init__(self, path: str | Path | sqlite3.Connection):
+        self._owns_connection = not isinstance(path, sqlite3.Connection)
+        if isinstance(path, sqlite3.Connection):
+            if not initialized(path):
+                raise ValueError("External connection must have an initialized schema")
+            self.conn = path
+            return
         self.conn = connect(path)
         try:
             initialize(self.conn)
@@ -44,7 +50,8 @@ class Store:
         self.close()
 
     def close(self) -> None:
-        self.conn.close()
+        if self._owns_connection:
+            self.conn.close()
 
     def ingest(
         self,
@@ -53,7 +60,11 @@ class Store:
         *,
         progress: ProgressCallback | None = None,
         retries: int = 3,
+        commit: bool = True,
     ) -> IngestResult:
+        # Migration can append inside its outer transaction without publishing counters early.
+        if self.conn.in_transaction == commit:
+            raise ValueError("Use commit=False only inside a caller-owned transaction")
         # Freeze caller-owned dictionaries and prepare expensive serialization outside the lock.
         snapshot = Snapshot.model_validate_json(snapshot.model_dump_json())
         if hashlib.sha256(source_bytes).hexdigest() != snapshot.source_sha256:
@@ -82,12 +93,19 @@ class Store:
         emit(progress, "persist", "started", source=source, total=len(prepared))
         for attempt in range(retries):
             try:
-                result = self._ingest_once(snapshot, source_bytes, prepared, progress)
+                result = self._ingest_once(
+                    snapshot, source_bytes, prepared, progress, commit
+                )
             except sqlite3.OperationalError as exc:
-                if (getattr(exc, "sqlite_errorcode", 0) & 0xFF) in (
-                    sqlite3.SQLITE_BUSY,
-                    sqlite3.SQLITE_LOCKED,
-                ) and attempt + 1 < retries:
+                if (
+                    commit
+                    and (getattr(exc, "sqlite_errorcode", 0) & 0xFF)
+                    in (
+                        sqlite3.SQLITE_BUSY,
+                        sqlite3.SQLITE_LOCKED,
+                    )
+                    and attempt + 1 < retries
+                ):
                     time.sleep(0.02 * (attempt + 1))
                     continue
                 emit(
@@ -106,6 +124,8 @@ class Store:
                 )
                 raise
             else:
+                if not commit:
+                    return result
                 # Outside the rollback handler: a renderer error cannot relabel a committed TX.
                 emit(
                     progress,
@@ -119,10 +139,13 @@ class Store:
                 return result
         raise AssertionError("Write attempts exhausted")
 
-    def _ingest_once(self, snapshot, source_bytes, prepared, progress) -> IngestResult:
+    def _ingest_once(
+        self, snapshot, source_bytes, prepared, progress, commit
+    ) -> IngestResult:
         conn = self.conn
         try:
-            conn.execute("BEGIN IMMEDIATE")
+            if commit:
+                conn.execute("BEGIN IMMEDIATE")
             conn.execute(
                 "INSERT INTO feeds(publisher_id,url) VALUES (?,?) ON CONFLICT(publisher_id) DO NOTHING",
                 (snapshot.feed.id, snapshot.feed.url),
@@ -149,7 +172,8 @@ class Store:
                 ),
             ).fetchone()
             if replay is not None:
-                conn.commit()
+                if commit:
+                    conn.commit()
                 return IngestResult(snapshot_id=replay[0], replayed=True)
             now = datetime.now(timezone.utc).isoformat()
             snapshot_id = conn.execute(
@@ -239,14 +263,16 @@ class Store:
                     completed=position + 1,
                     total=len(prepared),
                 )
-            conn.commit()
+            if commit:
+                conn.commit()
             return IngestResult(
                 snapshot_id=snapshot_id,
                 replayed=False,
                 counts=Counts(new_items, revisions, len(prepared), unchanged, blocks),
             )
         except BaseException:
-            conn.rollback()
+            if commit:
+                conn.rollback()
             raise
 
     def _source_children(self, revision_id: int, entry: Entry) -> int:
