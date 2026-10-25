@@ -43,17 +43,6 @@ def cli(ctx, log_level, log_file):
     ctx.obj["CONSOLE"] = console
 
 
-@cli.command()
-@click.pass_context
-def main(ctx):
-    """The main entry point for the prompthound CLI."""
-    console = ctx.obj["CONSOLE"]
-    logger = ctx.obj["LOGGER"]
-
-    console.print("Hello from prompthound CLI!", style="bold green")
-    logger.info("CLI command executed successfully.")
-
-
 def database_path(value):
     if value:
         return Path(value)

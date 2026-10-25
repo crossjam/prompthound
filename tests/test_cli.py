@@ -6,12 +6,16 @@ import sqlite_utils
 import tarfile
 
 
-def test_cli_main():
-    """Test the main CLI command."""
+def test_cli_help():
+    """The CLI lists production commands without the retired placeholder."""
     runner = CliRunner()
-    result = runner.invoke(cli, ["main"])
+    result = runner.invoke(cli, ["--help"])
     assert result.exit_code == 0
-    assert "Hello from prompthound CLI!" in result.output
+    for command in ("init", "ingest", "extract"):
+        assert command in result.output
+    retired = runner.invoke(cli, ["main"])
+    assert retired.exit_code == 2
+    assert "No such command 'main'" in retired.output
 
 
 def test_cli_init(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
