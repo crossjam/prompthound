@@ -9,6 +9,9 @@ methods](https://pluralistic.net/2021/05/09/the-memex-method/).
 
 ## Feed ingestion
 
+See [Using the CLI](docs/cli.md) for initialization, file/stdin imports, capture
+options, extraction retries, progress, and error handling.
+
 Install with `uv sync`. Ingest local RSS/Atom files into SQLite:
 
 ```bash
@@ -87,6 +90,12 @@ an attempt. Either case reports a nonzero exit while preserving source history.
 versions. It never appends publisher revisions and keeps earlier results.
 `init` migrates source data; run `extract` to process migrated historical blocks.
 
+The current `html-v3` extractor can decode entities a second time when generating
+sections from bare text, affecting section text fidelity. The full October audit
+found this in 41 summary blocks; retained source content and block-level text are
+intact. A corrected extractor version is pending. See the
+[verification findings](plans/feed-item-model-2026-10/PRODUCTION.md).
+
 ## Querying SQLite
 
 The views support SQLite clients and Datasette:
@@ -148,6 +157,6 @@ uv run python plans/feed-item-model-2026-10/verify_production.py \
 Normal tests use portable fixtures and isolated databases. The optional sample
 command reads the frozen ten-file manifest, verifies source checksums, and runs
 production ingestion/replay in a disposable database without modifying datasets.
-See the [production acceptance results](plans/feed-item-model-2026-10/PRODUCTION.md)
+See the [sample and full October verification results](plans/feed-item-model-2026-10/PRODUCTION.md)
 and [storage contracts](docs/ingestion-contract.md). The original model proposal
 and its measurements remain under `plans/feed-item-model-2026-10`.
