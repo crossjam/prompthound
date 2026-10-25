@@ -4,6 +4,7 @@ import calendar
 from collections.abc import Mapping
 from datetime import datetime, timezone
 import hashlib
+import gzip
 import json
 import re
 from typing import Any, TypeVar
@@ -132,7 +133,11 @@ def parse_snapshot(
     """
     if not content.strip():
         raise FeedError("Feed input is empty")
-    parsed = feedparser.parse(content)
+    try:
+        xml = gzip.decompress(content) if content.startswith(b"\x1f\x8b") else content
+    except (OSError, EOFError) as exc:
+        raise FeedError(f"Invalid gzip feed: {exc}") from exc
+    parsed = feedparser.parse(xml)
     if parsed.bozo:
         raise FeedError(
             f"Malformed feed: {parsed.get('bozo_exception', 'parse error')}"

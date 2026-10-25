@@ -54,6 +54,17 @@ class CLIProgress:
 
     def __call__(self, event: Event) -> None:
         self.results.consume(event)
+        if event.stage == "migrate" and event.outcome == "completed" and event.message:
+            self.console.print(
+                event.message, markup=False, highlight=False, soft_wrap=True
+            )
+        if event.stage == "extract" and event.outcome == "failed" and event.message:
+            self.console.print(
+                f"HTML extraction failed for {event.source}: {event.message}",
+                markup=False,
+                highlight=False,
+                soft_wrap=True,
+            )
         if not self.enabled:
             return
         if event.stage == "input" and event.outcome in {
@@ -82,14 +93,16 @@ class CLIProgress:
                 description=label,
             )
 
-    def summary(self, *, pending_extractions: int = 0) -> None:
+    def summary(
+        self, *, pending_extractions: int = 0, operation: str = "Ingestion"
+    ) -> None:
         result = self.results
         if result.interrupted:
-            title = "Ingestion interrupted."
+            title = f"{operation} interrupted."
         elif result.failed_files or result.failed_extractions:
-            title = "Ingestion finished with errors."
+            title = f"{operation} finished with errors."
         else:
-            title = "Ingestion complete."
+            title = f"{operation} complete."
         self.console.print(
             f"{title} {result.files} inputs; {result.new_items} new items, {result.revisions} revisions, "
             f"{result.unchanged} unchanged observations; {result.replayed_files} replayed, "

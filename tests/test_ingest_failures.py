@@ -1,6 +1,5 @@
 """Regression coverage for custom database initialization and batch failures."""
 
-import sqlite3
 from pathlib import Path
 
 import pytest
@@ -8,7 +7,7 @@ import sqlite_utils
 from click.testing import CliRunner
 
 from prompthound.cli import cli
-from prompthound.vendor.feed_to_sqlite.ingest import ingest_feed
+from prompthound.schema import connect, initialize
 
 
 @pytest.fixture(autouse=True)
@@ -92,25 +91,30 @@ def test_failed_input_exits_nonzero_and_continues_batch(
     assert str(bad_file) in result.output
     database = sqlite_utils.Database(db_path)
     assert database["feeds"].count == 1
-    assert next(database["feeds"].rows)["title"] == "Valid feed"
+    assert (
+        next(
+            database.query(
+                "SELECT json_extract(feed_json, '$.title.value') AS title FROM snapshots"
+            )
+        )["title"]
+        == "Valid feed"
+    )
     database.conn.close()
 
 
 def test_database_failure_exits_nonzero_and_continues_batch(
     tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
     feed_file: Path,
 ):
     bad_file = tmp_path / "database-error.rss"
-    bad_file.write_text(feed_file.read_text().replace("Valid feed", "Broken feed"))
-
-    def ingest_with_database_failure(db, *, feed_content):
-        if "Broken feed" in feed_content:
-            raise sqlite3.OperationalError("simulated database write failure")
-        return ingest_feed(db, feed_content=feed_content)
-
-    monkeypatch.setattr("prompthound.cli.ingest_feed", ingest_with_database_failure)
+    bad_file.write_text(feed_file.read_text().replace("An entry", "Broken entry"))
     db_path = tmp_path / "feeds.db"
+    conn = connect(db_path)
+    initialize(conn)
+    conn.execute("""CREATE TRIGGER simulate_failure BEFORE INSERT ON entry_revisions
+        WHEN NEW.title='Broken entry' BEGIN
+        SELECT RAISE(ABORT, 'simulated database write failure'); END""")
+    conn.close()
     result = CliRunner().invoke(
         cli,
         ["ingest", "--db", str(db_path), str(bad_file), str(feed_file)],
@@ -148,9 +152,11 @@ def test_link_only_entries_are_persisted_once(tmp_path: Path, feed_file: Path):
         assert result.exit_code == 0, result.output
 
     database = sqlite_utils.Database(db_path)
-    entry_tables = [name for name in database.table_names() if name != "feeds"]
-    assert len(entry_tables) == 1
-    entries = database[entry_tables[0]]
-    assert entries.count == 1
-    assert next(entries.rows)["id"] == "https://example.com/post"
+    assert database["entries"].count == 1
+    assert (
+        next(database.query("SELECT item_identifier FROM latest_entries"))[
+            "item_identifier"
+        ]
+        == "https://example.com/post"
+    )
     database.conn.close()

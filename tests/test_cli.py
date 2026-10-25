@@ -4,8 +4,6 @@ import pytest
 from pathlib import Path
 import sqlite_utils
 import tarfile
-import feedparser
-from prompthound.vendor.feed_to_sqlite.ingest import slugify
 
 
 def test_cli_main():
@@ -54,7 +52,6 @@ def test_cli_init_dry_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     assert "Dry Run Mode" in result.output
     assert "Directory would be created" in result.output
     assert "Database would be created" in result.output
-
 
 
 def test_cli_ingest(tmp_path: Path):
@@ -198,20 +195,16 @@ def test_cli_ingest_pluralistic_sample(tmp_path: Path):
     runner = CliRunner()
     db_path = tmp_path / "test.db"
     xml_file = "tests/data/Pluralistic_archive_sample.xml"
-    
+
     result = runner.invoke(cli, ["ingest", "--db", str(db_path), xml_file])
     assert result.exit_code == 0
 
     db = sqlite_utils.Database(db_path)
 
-    # Dynamically get the slugified table name
-    with open(xml_file, "r") as f:
-        feed_content = f.read()
-    feed = feedparser.parse(feed_content)
-    expected_table_name = slugify(feed.feed.title)
-
-    assert expected_table_name in db.table_names()
-    assert db[expected_table_name].count == 91
+    assert db["entries"].count == 91
+    assert next(db.query("SELECT COUNT(*) AS n FROM latest_entries"))["n"] == 91
+    assert db["snapshot_entries"].count == 91
+    db.conn.close()
 
 
 def test_cli_ingest_pluralistic_sample_lxml(tmp_path: Path):
@@ -225,14 +218,10 @@ def test_cli_ingest_pluralistic_sample_lxml(tmp_path: Path):
 
     db = sqlite_utils.Database(db_path)
 
-    # Dynamically get the slugified table name
-    with open(xml_file, "r") as f:
-        feed_content = f.read()
-    feed = feedparser.parse(feed_content)
-    expected_table_name = slugify(feed.feed.title)
-
-    assert expected_table_name in db.table_names()
-    assert db[expected_table_name].count == 91
+    assert db["entries"].count == 91
+    assert next(db.query("SELECT COUNT(*) AS n FROM latest_entries"))["n"] == 91
+    assert db["snapshot_entries"].count == 91
+    db.conn.close()
 
 
 @pytest.mark.skip(reason="Temporarily skipping tar.gz archive test")
@@ -260,10 +249,6 @@ def test_cli_ingest_tar_gz_archive(tmp_path: Path):
     db = sqlite_utils.Database(db_path)
 
     assert "feeds" in db.table_names()
-    for xml_file_path in extract_path.glob("**/*.xml"):
-        with open(xml_file_path, "r") as f:
-            feed_content = f.read()
-        feed = feedparser.parse(feed_content)
-        expected_table_name = slugify(feed.feed.title)
-        assert expected_table_name in db.table_names()
-        assert db[expected_table_name].count > 0
+    assert db["entries"].count > 0
+    assert db["snapshots"].count == len(xml_files)
+    db.conn.close()
