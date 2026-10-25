@@ -69,3 +69,20 @@ events never add rows to `Results`. Input terminal outcomes advance file counts,
 including failures and replays. Extraction successes/failures and interruptions
 remain distinct from already committed source records. Rich consumes this contract
 at the CLI boundary; persistence services do not import terminal renderers.
+
+## SQLite persistence
+
+The database carries an application ID and a versioned `schema_migrations` table.
+Every connection enables foreign keys and recursive triggers. Source identities,
+snapshots (including exact bytes), revisions, observations, tags, blocks, and
+extraction attempts are shared across feeds and protected from updates/deletes.
+Existing nonempty databases require explicit legacy migration; initialization
+never silently replaces their tables. Future schema versions fail explicitly.
+
+`Store.ingest` prepares model/JSON/fingerprint data outside the write transaction,
+then checks replay identity and appends rows under `BEGIN IMMEDIATE`. Revision
+sequence and same-item/feed relationships are enforced by SQLite as well as the
+adapter. It publishes committed counters only after commit. A failure or interrupt
+rolls back all changes for the snapshot. Busy/locked writes retry at most three
+times; capture replay and revision comparison are repeated inside each transaction.
+Content extraction runs separately from these source writes.
