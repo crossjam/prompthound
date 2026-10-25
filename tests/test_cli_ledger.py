@@ -8,6 +8,7 @@ import pytest
 from click.testing import CliRunner
 
 from prompthound.cli import cli
+from prompthound.extraction import extract_block
 from prompthound.schema import connect, initialize
 from prompthound.storage import Store
 
@@ -239,3 +240,96 @@ def test_bad_capture_options_fail_before_creating_database(tmp_path):
         result = invoke(db, *args)
         assert result.exit_code == 2, result.output
         assert not db.exists()
+
+
+def test_cli_migrates_legacy_data_keeps_backup_and_appends_new_snapshot(tmp_path):
+    db = tmp_path / "legacy.db"
+    with sqlite3.connect(db) as conn:
+        conn.execute("CREATE TABLE feeds(id TEXT PRIMARY KEY,title TEXT,link TEXT)")
+        conn.execute(
+            "INSERT INTO feeds VALUES('https://example.com/','Example','https://example.com/')"
+        )
+        conn.execute(
+            "CREATE TABLE old_posts(id TEXT PRIMARY KEY,feed TEXT,title TEXT,description TEXT)"
+        )
+        conn.execute(
+            "INSERT INTO old_posts VALUES('opaque:1','https://example.com/','Old','<p>Old body</p>')"
+        )
+    result = invoke(db, input=rss())
+    assert result.exit_code == 0, result.stderr
+    assert "Original database backed up at" in result.stderr
+    assert "2 revisions" in result.stderr  # Includes committed migration rows.
+    backups = list(tmp_path.glob("*.pre-ledger-*.sqlite3"))
+    assert len(backups) == 1
+    with sqlite3.connect(backups[0]) as backup:
+        assert backup.execute("SELECT title FROM old_posts").fetchone()[0] == "Old"
+    with Store(db) as store:
+        assert store.conn.execute("SELECT COUNT(*) FROM entries").fetchone()[0] == 1
+        assert [
+            r[0]
+            for r in store.conn.execute(
+                "SELECT title FROM entry_history ORDER BY revision_number"
+            )
+        ] == ["Old", "A"]
+        assert not list(store.conn.execute("PRAGMA foreign_key_check"))
+
+
+def test_failed_extraction_attempt_is_explicit_and_later_success_does_not_revise_source(
+    tmp_path, monkeypatch
+):
+    db = tmp_path / "feed.db"
+
+    def fail(*args, **kwargs):
+        raise ValueError("cannot convert HTML")
+
+    monkeypatch.setattr("prompthound.extraction.extract_block", fail)
+    result = invoke(db, input=rss())
+    assert result.exit_code == 1, result.stderr
+    assert "cannot convert HTML" in result.stderr
+    with Store(db) as store:
+        failed = store.conn.execute(
+            "SELECT status,error FROM content_extractions"
+        ).fetchone()
+        assert tuple(failed) == ("failed", "cannot convert HTML")
+        assert (
+            store.conn.execute("SELECT COUNT(*) FROM entry_revisions").fetchone()[0]
+            == 1
+        )
+    monkeypatch.setattr("prompthound.extraction.extract_block", extract_block)
+    retried = invoke(db, input=rss())
+    assert retried.exit_code == 0, retried.stderr
+    assert "1 replayed" in retried.stderr
+    with Store(db) as store:
+        assert [
+            r[0]
+            for r in store.conn.execute(
+                "SELECT status FROM content_extractions ORDER BY id"
+            )
+        ] == ["failed", "completed"]
+        assert (
+            store.conn.execute("SELECT COUNT(*) FROM entry_revisions").fetchone()[0]
+            == 1
+        )
+
+
+def test_extraction_interrupt_keeps_source_and_reports_pending_work(
+    tmp_path, monkeypatch
+):
+    db = tmp_path / "feed.db"
+
+    def interrupt(*args, **kwargs):
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr("prompthound.extraction.extract_block", interrupt)
+    result = invoke(db, input=rss())
+    assert result.exit_code == 1, result.stderr
+    assert "Ingestion interrupted." in result.stderr
+    assert "1 revisions" in result.stderr and "1 pending extractions" in result.stderr
+    with Store(db) as store:
+        assert store.conn.execute("SELECT COUNT(*) FROM snapshots").fetchone()[0] == 1
+    result = CliRunner(mix_stderr=False).invoke(cli, ["extract", "--db", str(db)])
+    assert result.exit_code == 1
+    assert (
+        "Extraction interrupted." in result.stderr
+        and "1 pending extractions" in result.stderr
+    )
