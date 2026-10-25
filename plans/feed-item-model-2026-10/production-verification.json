@@ -1,0 +1,51 @@
+{
+  "verified_at": "2026-10-25T15:25:41.475542+00:00",
+  "schema_version": 2,
+  "versions": {
+    "feedparser": "6.0.11",
+    "pydantic": "2.11.7",
+    "beautifulsoup4": "4.15.0",
+    "lxml": "6.1.3",
+    "htmd-py": "0.1.0",
+    "rich": "14.1.0"
+  },
+  "sample_files": 10,
+  "counts": {
+    "feeds": 1,
+    "entries": 42,
+    "snapshots": 10,
+    "entry_revisions": 61,
+    "snapshot_entries": 300,
+    "content_blocks": 122,
+    "content_extractions": 122,
+    "revision_tags": 603,
+    "latest_entries": 42,
+    "entry_history": 61,
+    "latest_entry_content": 84
+  },
+  "unchanged_observations": 239,
+  "items_by_revision_count": {
+    "1": 28,
+    "2": 10,
+    "3": 3,
+    "4": 1
+  },
+  "html": {
+    "attempts": 122,
+    "sections": 733,
+    "editorial_blocks": 61
+  },
+  "first_summary": "Ingestion complete. 10 inputs; 42 new items, 61 revisions, 239 unchanged observations; 0 replayed, 0 failed inputs; 122 extracted, 0 failed extractions, 0 pending extractions.",
+  "replay_summary": "Ingestion complete. 10 inputs; 0 new items, 0 revisions, 0 unchanged observations; 10 replayed, 0 failed inputs; 0 extracted, 0 failed extractions, 0 pending extractions.",
+  "checks": [
+    "manifest SHA-256",
+    "retained artifact SHA-256",
+    "model/SQL round trips",
+    "revision fingerprints",
+    "query views",
+    "foreign keys",
+    "SQLite integrity",
+    "idempotent replay",
+    "clean stdout/plain stderr"
+  ]
+}

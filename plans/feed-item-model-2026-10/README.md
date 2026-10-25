@@ -1,7 +1,11 @@
 # Feed item model proposal from October 2026 snapshots
 
-This is an exploratory proposal, with executable Pydantic v2 models and a validated
-adapter. It does not change the production ingestion code or database schema.
+This document preserves the original exploratory proposal and its measurements.
+Production models, persistence, migrations, extraction, CLI integration and Rich
+progress now live under `src/prompthound`. See [production acceptance](PRODUCTION.md),
+[usage and recovery](../../README.md), and [storage contracts](../../docs/ingestion-contract.md)
+for the implemented behavior. In production, source `ContentBlock` values and
+versioned extraction results are separate records; the prototype combined them.
 
 Implementation is tracked in Kata under `prompthound#g9js`; see the
 [issue hierarchy and prerequisite roadmap](../KATA_ROADMAP.md). The checklist below
@@ -196,8 +200,8 @@ Pydantic validation and JSON round-trip checks.
 Persisted ingestion must compare the latest state and insert within a single
 transaction, serializing competing writers to the same item. Enforce the revision
 key in SQLite and reject updates/deletes of ledger rows. These database constraints
-are requirements for later implementation, not guarantees supplied by a Pydantic
-model or this in-memory prototype. Re-ingesting a previously processed snapshot
+are implemented in the production SQLite schema; they are not guarantees supplied
+by a Pydantic model or this in-memory prototype. Re-ingesting a previously processed snapshot
 must be idempotent by snapshot identity before replaying its observations.
 
 The sequence records observation/ingestion order. Keep `captured_at` separately
@@ -295,7 +299,8 @@ preserving fields that cannot yet be modeled. Mark missing historical provenance
 as unknown; do not invent capture times. Define legacy-import provenance explicitly
 before enforcing capture requirements on migrated rows. Validate counts,
 relationships, and model round trips before switching ingestion and query paths.
-This document specifies the migration work; no production migration has run yet.
+This was the migration design; production migration and recovery are now verified
+by portable database and CLI tests described in [production acceptance](PRODUCTION.md).
 
 References: [SQLite foreign keys](https://www.sqlite.org/foreignkeys.html),
 [JSON functions](https://www.sqlite.org/json1.html),
@@ -305,8 +310,8 @@ References: [SQLite foreign keys](https://www.sqlite.org/foreignkeys.html),
 ## Rich progress indicators
 
 Use `rich.progress.Progress` with the CLI's shared console on stderr. Declare
-`rich` as a direct dependency when implementing the progress layer; the CLI
-already imports Rich and currently receives it transitively. Keep the persistence
+`rich` as a direct dependency (now implemented); the original CLI
+received it transitively. Keep the persistence
 and parsing layers independent of terminal rendering by emitting progress events
 or accepting a callback that the CLI translates into Rich updates.
 
@@ -346,25 +351,25 @@ and [Console API](https://rich.readthedocs.io/en/stable/console.html).
 
 ## Implementation sequence and acceptance checks
 
-- [ ] Finalize production models/adapters, canonical fingerprint policy, capture
+- [x] Finalize production models/adapters, canonical fingerprint policy, capture
   identity, legacy provenance, and versioned schema migrations.
-- [ ] Implement shared tables, constraints, indexes, ledger transactions, replay
+- [x] Implement shared tables, constraints, indexes, ledger transactions, replay
   detection, and the three query views; migrate legacy databases with recovery.
-- [ ] Adopt Beautiful Soup 4 with `lxml` for HTML metadata and section extraction;
+- [x] Adopt Beautiful Soup 4 with `lxml` for HTML metadata and section extraction;
   persist source blocks and separately versioned text/Markdown/HTML features.
-- [ ] Add Rich progress events and CLI rendering for ingestion, extraction, and
+- [x] Add Rich progress events and CLI rendering for ingestion, extraction, and
   migration, including unknown-total stdin and `--no-progress` behavior.
-- [ ] Verify ledger persistence with unchanged captures, metadata-only changes,
+- [x] Verify ledger persistence with unchanged captures, metadata-only changes,
   `A -> B -> A` reversions, duplicate IDs, identical bytes in separate captures,
   late imports, replay, concurrent writers, rollback, and rejected ledger mutation.
-- [ ] Verify model/SQL round trips, nullable fields, foreign-key consistency,
+- [x] Verify model/SQL round trips, nullable fields, foreign-key consistency,
   migration recovery, revision-owned tags/content, and latest/history queries.
-- [ ] Verify extraction upgrades leave publisher revision counts unchanged and
+- [x] Verify extraction upgrades leave publisher revision counts unchanged and
   retain access to earlier extraction results.
-- [ ] Verify progress events and committed counters with success, replay, failure,
+- [x] Verify progress events and committed counters with success, replay, failure,
   rollback, and interruption; test terminal/nonterminal stderr, clean stdout, and
   disabled progress without asserting timing-sensitive animation frames.
-- [ ] Update CLI documentation and examples, then rerun the fixed RSS sample and
+- [x] Update CLI documentation and examples, then rerun the fixed RSS sample and
   appropriate project checks against the production ingestion path.
 
 ## Artifacts and references
