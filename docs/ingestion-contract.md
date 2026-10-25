@@ -57,3 +57,15 @@ those actual exports, not an invented original XML document. Missing capture tim
 are null. Ambiguous row-to-feed associations must be preserved and reported or
 cause a recoverable migration error; they must never be silently assigned to a
 different feed. Migration and replay policies are covered by database tests.
+
+## Progress events
+
+Services emit `events.Event` values through an optional callback; omitting a
+callback produces no terminal output. Stages are input, read, parse, validate,
+persist, extract, and migrate. Totals can remain unknown while reading/parsing,
+then become item/block/row counts. Progress is provisional until persistence
+commits. Only a persist/committed event can carry `Counts`; rollback and replay
+events never add rows to `Results`. Input terminal outcomes advance file counts,
+including failures and replays. Extraction successes/failures and interruptions
+remain distinct from already committed source records. Rich consumes this contract
+at the CLI boundary; persistence services do not import terminal renderers.
