@@ -107,6 +107,40 @@ def test_toc_wrappers_visit_nested_headings_and_anchors_without_duplicate_body()
         assert combined.count(text) == 1
 
 
+@pytest.mark.parametrize("target", ["legacy", "modern"])
+def test_distinct_anchor_name_and_id_both_support_toc_boundaries(target):
+    result = extract_block(
+        ContentBlock(
+            type="text/html",
+            value=f'<nav><a href="#{target}">Target title</a></nav>'
+            "<h2>Before</h2><p>Before body</p>"
+            '<a id="modern" name="legacy"></a><p>Target body</p>',
+        )
+    )
+    section = next(
+        section for section in result.features.sections if section.anchor == target
+    )
+    assert section.title == "Target title"
+    assert "Target body" in section.text and "Before body" not in section.text
+    assert {"modern", "legacy"}.issubset(result.features.anchors)
+
+
+@pytest.mark.parametrize("target", ["legacy", "modern"])
+def test_heading_after_dual_identifier_anchor_uses_toc_alias(target):
+    result = extract_block(
+        ContentBlock(
+            type="text/html",
+            value=f'<nav><a href="#{target}">Target title</a></nav>'
+            '<a id="modern" name="legacy"></a><h2>Heading title</h2><p>Body</p>',
+        )
+    )
+    section = next(
+        section for section in result.features.sections if section.anchor == target
+    )
+    assert section.title == "Heading title" and "Body" in section.text
+    assert result.features.headings[0].anchor == target
+
+
 def test_later_headings_do_not_inherit_a_stale_named_anchor():
     result = extract_block(
         ContentBlock(

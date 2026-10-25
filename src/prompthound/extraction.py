@@ -24,7 +24,7 @@ from .models import (
 from .parsing import canonical_json
 from .storage import Store
 
-EXTRACTOR_VERSION = "html-v2;" + ";".join(
+EXTRACTOR_VERSION = "html-v3;" + ";".join(
     f"{name}={version(name)}" for name in ("beautifulsoup4", "lxml", "htmd-py")
 )
 HEADINGS = {"h1", "h2", "h3", "h4", "h5", "h6"}
@@ -101,6 +101,30 @@ def heading_title(node: Tag) -> str:
     return " ".join(re.sub(r"\(\s*\)", "", clone.get_text(" ", strip=True)).split())
 
 
+def anchor_identifiers(node: Tag) -> list[str]:
+    return list(
+        dict.fromkeys(
+            value for key in ("name", "id") if (value := attribute(node, key))
+        )
+    )
+
+
+def preferred_anchor(node: Tag, toc: dict[str, str]) -> str | None:
+    identifiers = anchor_identifiers(node)
+    return next(
+        (value for value in identifiers if value in toc), next(iter(identifiers), None)
+    )
+
+
+def toc_labels(soup, base: str) -> dict[str, str]:
+    labels = {}
+    for link in soup.select("ul.toc a[href], nav a[href]"):
+        fragment = urlsplit(urljoin(base, attribute(link, "href") or "")).fragment
+        if fragment:
+            labels[fragment] = link.get_text(" ", strip=True)
+    return labels
+
+
 def section_kind(title: str, anchor: str | None):
     label = title.lower()
     if anchor == "linkdump" or label == "hey look at this":
@@ -124,19 +148,12 @@ def section_kind(title: str, anchor: str | None):
     return "essay"
 
 
-def sections(soup, headings: dict[int, Heading], base: str) -> list[Section]:
+def sections(soup, headings: dict[int, Heading], toc: dict[str, str]) -> list[Section]:
     """Partition on heading/permalink and named-anchor boundaries, preserving order."""
-    toc = {}
-    for link in soup.select("ul.toc a[href], nav a[href]"):
-        fragment = urlsplit(urljoin(base, attribute(link, "href") or "")).fragment
-        if fragment:
-            toc[fragment] = link.get_text(" ", strip=True)
     targets = set(toc)
     targets.update(
-        attribute(a, "name") or attribute(a, "id")
-        for a in soup.select("a[name], a[id]")
+        value for a in soup.select("a[name], a[id]") for value in anchor_identifiers(a)
     )
-    targets.discard(None)
     result = []
     current = _SectionBuffer()
 
@@ -162,8 +179,7 @@ def sections(soup, headings: dict[int, Heading], base: str) -> list[Section]:
             return (
                 node.find(
                     lambda descendant: descendant.name in HEADINGS
-                    or (attribute(descendant, "id") or attribute(descendant, "name"))
-                    in targets
+                    or any(value in targets for value in anchor_identifiers(descendant))
                 )
                 is not None
             )
@@ -176,11 +192,11 @@ def sections(soup, headings: dict[int, Heading], base: str) -> list[Section]:
                 current.anchor = heading.anchor
             current.title = heading.title
             current.parts.append(str(node))
-        elif (
-            isinstance(node, Tag)
-            and (attribute(node, "id") or attribute(node, "name")) in targets
+        elif isinstance(node, Tag) and any(
+            value in targets for value in anchor_identifiers(node)
         ):
-            anchor = attribute(node, "id") or attribute(node, "name")
+            anchor = preferred_anchor(node, toc)
+            assert anchor is not None  # This branch has a matching target identifier.
             if anchor != current.anchor:
                 flush()
                 current.title = toc.get(anchor, anchor or "Section")
@@ -245,9 +261,8 @@ def extract_block(
             Image(**{key: attribute(image, key) for key in Image.model_fields})
         )
     for node in soup.select("[id], a[name]"):
-        anchor = attribute(node, "id") or attribute(node, "name")
-        if anchor is not None:
-            features.anchors.append(anchor)
+        features.anchors.extend(anchor_identifiers(node))
+    toc = toc_labels(soup, base)
     headings = {}
     for node in soup.find_all(list(HEADINGS)):
         permalink = next(
@@ -271,7 +286,7 @@ def extract_block(
             if wrapper is not None and wrapper.find(list(HEADINGS)) is node:
                 anchor = attribute(wrapper, "id")
         if not anchor and previous_anchor is not None and previous_anchor.name == "a":
-            anchor = attribute(previous_anchor, "name")
+            anchor = preferred_anchor(previous_anchor, toc)
         heading = Heading(
             level=int(node.name[1]),
             title=heading_title(node),
@@ -281,7 +296,7 @@ def extract_block(
         headings[id(node)] = heading
         features.headings.append(heading)
     if config.sections:
-        features.sections = sections(soup, headings, base)
+        features.sections = sections(soup, headings, toc)
     return ExtractedContent(
         text=plain_text(soup), markdown=htmd.convert_html(str(soup)), features=features
     )
