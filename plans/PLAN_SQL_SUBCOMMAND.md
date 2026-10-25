@@ -1,5 +1,11 @@
 # Plan: Integrate sqlite-utils Read-Only CLI Commands into scrobbledb
 
+> Historical draft copied from scrobbledb. Prompthound implementation is now tracked
+> under Kata epic `prompthound#290c`; see [the Kata roadmap](KATA_ROADMAP.md).
+> Those issues adapt project names, database examples, command/path handling, and
+> read-only enforcement. The GitHub issue reference below is not a verified
+> Prompthound issue reference. Maintain execution status in Kata.
+
 ## Background
 
 - **Issue**: GitHub Issue #7 requests easy database access via sqlite-utils CLI integration

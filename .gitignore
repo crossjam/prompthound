@@ -9,3 +9,4 @@ wheels/
 # Virtual environments
 .venv
 /Pluralistic_to_09_28_2023.xml
+.kata.local.toml
