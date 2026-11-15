@@ -1,0 +1,49 @@
+{
+  "population_count": 96,
+  "seed": 202610,
+  "rounding": "ceil(10% of files)",
+  "population_first": "pluralistic_rss-2026-10-01T04:55:01+00:00.rss",
+  "population_last": "pluralistic_rss-2026-10-24T22:55:01+00:00.rss",
+  "files": [
+    {
+      "name": "pluralistic_rss-2026-10-01T04:55:01+00:00.rss",
+      "sha256": "188d38fc410b76c0131fce7d4dfdc7078d045b3dae1d18e103b97ee6644092bc"
+    },
+    {
+      "name": "pluralistic_rss-2026-10-02T04:55:01+00:00.rss",
+      "sha256": "104cfa979792f09a82a2a7e77632a0bc81fa45a579440e71a1fe983ceb4972f8"
+    },
+    {
+      "name": "pluralistic_rss-2026-10-03T22:55:01+00:00.rss",
+      "sha256": "c043e013aa061832d7d00f7d7c14e0f5583c390e9f6a59277c775803bef1db25"
+    },
+    {
+      "name": "pluralistic_rss-2026-10-07T22:55:01+00:00.rss",
+      "sha256": "60ce9ecf5d07c46587b81ed19cfdb620bbeb68d6bb3ab23b103f778e77da2cdc"
+    },
+    {
+      "name": "pluralistic_rss-2026-10-09T04:55:02+00:00.rss",
+      "sha256": "60ce9ecf5d07c46587b81ed19cfdb620bbeb68d6bb3ab23b103f778e77da2cdc"
+    },
+    {
+      "name": "pluralistic_rss-2026-10-10T16:55:01+00:00.rss",
+      "sha256": "b83a91539a73023ed051009fff597d120caef7812d622e6a8720c94e5eab0939"
+    },
+    {
+      "name": "pluralistic_rss-2026-10-11T16:55:01+00:00.rss",
+      "sha256": "dbff217190591610c392c78bfde3029a8bb07db35d0fa3052505294422584755"
+    },
+    {
+      "name": "pluralistic_rss-2026-10-18T04:55:01+00:00.rss",
+      "sha256": "2b08dbb7229d653d6fba8d150ea82cb577c1b469ff4af74ba5afdc35da62203b"
+    },
+    {
+      "name": "pluralistic_rss-2026-10-18T22:55:01+00:00.rss",
+      "sha256": "3c39b137f496ee6a1d9011b65a751697ee20133b437e50dbca27e10671c0b487"
+    },
+    {
+      "name": "pluralistic_rss-2026-10-19T22:55:01+00:00.rss",
+      "sha256": "981476f571a6b97137eead704e52bdc9ec29c3f76119e5ab4a2983547677803e"
+    }
+  ]
+}

@@ -124,6 +124,9 @@ def extract_entry_fields(table, entry, feed, client=None):
         if value is not None:
             row[key] = value
 
+    if "id" in table.columns_dict and "id" not in row and entry.get("link"):
+        row["id"] = entry["link"]
+
     if entry.get("published_parsed"):
         row["published"] = parse_date(entry.published_parsed)
 

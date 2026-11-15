@@ -12,9 +12,13 @@ https://loguru.readthedocs.io/en/stable/overview.html#suitable-for-scripts-and-l
 import inspect
 import logging
 import sys
-from typing import Optional, Union
+from typing import TYPE_CHECKING, Optional, Union
 
 from loguru import logger
+from rich.console import Console
+
+if TYPE_CHECKING:
+    from loguru import Logger
 
 DEFAULT_LOG_FORMAT = "<y>{level:<7}</y>|{process.id:>8}|{elapsed}|{time:YYYY-MM-DD HH:mm:ssZ!UTC}|{name}|{function}|{message}"
 
@@ -64,7 +68,8 @@ def logging_config(
     log_format: str = DEFAULT_LOG_FORMAT,
     log_level: str = "INFO",
     log_file: Optional[str] = None,
-) -> logger:
+    console: Console | None = None,
+) -> "Logger":
     """
     Configures loguru for application logging.
 
@@ -75,12 +80,20 @@ def logging_config(
     """
     logger.remove()  # Remove default handlers
 
+    def stderr_sink(message):
+        if console is not None:
+            console.print(
+                str(message), end="", markup=False, highlight=False, soft_wrap=True
+            )
+        else:
+            sys.stderr.write(str(message))
+
     # Configure stderr as the primary log sink
     log_config = {
         "handlers": [
             {
-                "sink": sys.stderr,
-                "colorize": True,
+                "sink": stderr_sink,
+                "colorize": console is None and sys.stderr.isatty(),
                 "format": log_format,
                 "level": log_level,
             },
