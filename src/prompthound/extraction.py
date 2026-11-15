@@ -24,7 +24,7 @@ from .models import (
 from .parsing import canonical_json
 from .storage import Store
 
-EXTRACTOR_VERSION = "html-v3;" + ";".join(
+EXTRACTOR_VERSION = "html-v4;" + ";".join(
     f"{name}={version(name)}" for name in ("beautifulsoup4", "lxml", "htmd-py")
 )
 HEADINGS = {"h1", "h2", "h3", "h4", "h5", "h6"}
@@ -210,6 +210,9 @@ def sections(soup, headings: dict[int, Heading], toc: dict[str, str]) -> list[Se
         elif isinstance(node, Tag) and has_nested_boundary():
             for child in node.children:
                 walk(child)
+        elif isinstance(node, NavigableString):
+            # str() yields decoded text; flush() reparses, so re-escape it first.
+            current.parts.append(node.output_ready())
         else:
             current.parts.append(str(node))
 

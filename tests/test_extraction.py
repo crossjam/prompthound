@@ -155,6 +155,41 @@ def test_later_headings_do_not_inherit_a_stale_named_anchor():
     assert result.features.sections[-1].kind == "other"
 
 
+@pytest.mark.parametrize(
+    "source",
+    [
+        "A &amp;amp; B",
+        "Use &lt;literal&gt; here.",
+        "Named &copy; &eacute; and numeric &#169; &#x2014; entities",
+        "Double &amp;lt;b&amp;gt; escaped",
+        "Query ?a=1&amp;b=2 text",
+        "Mixed &lt;tag&gt; with <em>real &amp; inline</em> markup &amp;amp; tail",
+        "<h2>Head &lt;x&gt;</h2>Bare &lt;y&gt; &amp;amp; z<p>Para &amp;amp; w</p>",
+    ],
+)
+def test_section_text_preserves_block_text_meaning(source):
+    result = extract_block(ContentBlock(type="text/html", value=source))
+    combined = "".join(section.text for section in result.features.sections)
+    assert "".join(combined.split()) == "".join(result.text.split())
+
+
+def test_escaped_text_keeps_real_markup_and_section_boundaries():
+    result = extract_block(
+        ContentBlock(
+            type="text/html",
+            value='<nav><a href="#essay">Essay</a></nav>Intro &lt;not-a-tag&gt;'
+            '<a name="essay"></a><h2>Essay &amp;amp; more</h2>'
+            "Body &lt;b&gt; <strong>bold</strong> end",
+        )
+    )
+    intro, essay = result.features.sections
+    assert essay.anchor == "essay" and essay.title == "Essay &amp; more"
+    assert "Body <b> bold end" in essay.text
+    assert "<strong>bold</strong>" in essay.html and "&lt;b&gt;" in essay.html
+    assert "Intro <not-a-tag>" in intro.text and "Body" not in intro.text
+    assert "\n\n".join(s.markdown for s in (intro, essay)) == result.markdown
+
+
 def test_plain_text_is_not_interpreted_as_html_and_base_overrides_article_url():
     value = "Literal <p>text</p> <!-- comment -->"
     result = extract_block(ContentBlock(value=value, type="text/plain"))
